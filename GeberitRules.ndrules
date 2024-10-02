@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Queries>
+  <Group Name="SRP" Active="True" ShownInReport="False">
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Klassen die pot. SRP verletzten</Name>
+warnif count > 0 
+
+let managementClasses = JustMyCode.Types.Where(t => !t.ParentNamespace.NameLike("DataClasses") && !t.IsGeneratedByCompiler)
+
+from t in managementClasses
+where t.NbLinesOfCode > 220 || t.NbMethods > 10 
+select new { t, t.NbLinesOfCode, t.NbMethods }
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Methoden die die pot. SRP verletzen</Name>
+warnif count > 0 
+
+let trueMethods = JustMyCode.Methods.Where(m => !m.IsGeneratedByCompiler && !m.IsConstructor)
+
+from m in trueMethods
+
+where m.CyclomaticComplexity > 7 || m.NbLinesOfCode > 20
+
+select new { m, m.CyclomaticComplexity, m.NbLinesOfCode }
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Namingpattern Manager is followed</Name>
+warnif count > 0 
+
+let patternName = "Manager"
+let allowedMethods = new string[]{"Add","Remove","Update"}
+let allowedPrefixes = new string []{"Get","Is","Are"}
+
+from t in JustMyCode.Types
+
+let methods = t.Methods.Where(m => !m.IsPropertySetter && !m.IsPropertyGetter && !m.IsConstructor)
+let forbiddenMethods = methods.Where(m => !allowedMethods.Any(m1 => m.SimpleName == m1) 
+                                          && allowedPrefixes.All(mp => !m.SimpleName.StartsWith(mp)))
+where !t.IsGeneratedByCompiler
+ && t.Name.EndsWith(patternName)
+ && forbiddenMethods.Any()
+
+
+select new{t, forbiddenMethods}]]></Query>
+  </Group>
+  <Group Name="Namensmuster" Active="True" ShownInReport="False">
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Klassen die kein Namensmuster haben</Name>
+warnif count > 0 
+
+let classBlacklist = new string[]{"Program"}
+
+let managementClasses = JustMyCode.Types.Where(t => !t.IsGeneratedByCompiler 
+                                                 && !t.ParentNamespace.NameLike("DataClasses") 
+                                                 && classBlacklist.All(cbl => t.SimpleName != cbl))
+
+let namepatterns = new string[]{
+ "Manager",
+ "DisplayCommands",
+ "Parser",
+ "Repository",
+ "Reader",
+ "Sender",
+ "Workflow",
+ "Initializer",
+ "Controller"
+}
+
+from t in managementClasses
+
+where namepatterns.All(np => !t.SimpleName.EndsWith(np))
+
+select t
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Namingpattern Manager is followed</Name>
+warnif count > 0 
+
+let patternName = "Manager"
+let allowedMethods = new string[]{"Add","Update","Remove",}
+let allowedPrefixes = new string []{"Get","Is","Are"}
+
+from t in JustMyCode.Types
+
+let methods = t.Methods.Where(m => !m.IsPropertySetter && !m.IsPropertyGetter && !m.IsConstructor)
+let forbiddenMethods = methods.Where(m => !allowedMethods.Any(m1 => m.SimpleName == m1) 
+                                          && allowedPrefixes.All(mp => !m.SimpleName.StartsWith(mp)))
+where !t.IsGeneratedByCompiler
+ && t.Name.EndsWith(patternName)
+ && forbiddenMethods.Any()
+
+
+select new{t, forbiddenMethods}
+]]></Query>
+  </Group>
+  <Group Name="Abhängigkeiten" Active="True" ShownInReport="False">
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Keine statischen Klassen</Name>
+warnif count > 0 
+
+from t in JustMyCode.Types
+where t.IsStatic
+select new { t, t.ParentAssembly }]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Keine Implementierungsabhängigkeiten</Name>
+warnif count > 0 
+
+let classBlacklist = new string[]{"Program","ServiceCollectionInitializer"}
+
+let managementClasses = JustMyCode.Types.Where(t => !t.IsGeneratedByCompiler 
+                                                 && !t.ParentNamespace.NameLike("DataClasses") 
+                                                 && !t.IsInterface
+                                                 && classBlacklist.All(cbl => t.SimpleName != cbl))
+
+from t in managementClasses
+
+let implDependencies = t.TypesUsed.Where(tu => !tu.IsThirdParty
+                                        && !tu.ParentNamespace.NameLike("DataClasses")
+                                        && !tu.IsGeneratedByCompiler
+                                        && !tu.IsInterface)
+
+where implDependencies.Any()
+
+select new { t, implDependencies }
+]]></Query>
+  </Group>
+  <Group Name="MLA" Active="True" ShownInReport="False">
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>UI -> CC,Logic</Name>
+warnif count > 0 
+
+let blackListedClasses = new string[]{"ServiceCollectionInitializer"}
+let blackListedNamespaces = new string[]{""}
+
+let uiTypes = JustMyCode.Types.Where(t => t.ParentNamespace.NameLike(".UI."))
+
+from t in uiTypes
+
+let illegalTypesUsed = t.TypesUsed.Where(itu => !itu.ParentNamespace.NameLike(".UI.|.Logic.|.CrossCutting.")
+                                             && !itu.IsThirdParty
+                                             && blackListedClasses.All(blc => itu.SimpleName != blc)
+                                             && blackListedNamespaces.All(bns => itu.ParentNamespace.FullName != bns))
+
+where illegalTypesUsed.Any()
+
+select new { Assembly = t.ParentAssembly, Type= t,t.ParentNamespace.FullName, illegalTypesUsed  }
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Logic -> CC,Data</Name>
+warnif count > 0 
+
+let blackListedClasses = new string[]{"ServiceCollectionInitializer"}
+let blackListedNamespaces = new string[]{""}
+
+let uiTypes = JustMyCode.Types.Where(t => t.ParentNamespace.NameLike(".Logic."))
+
+from t in uiTypes
+
+let illegalTypesUsed = t.TypesUsed.Where(itu => !itu.ParentNamespace.NameLike(".Logic.|.Data.|.CrossCutting.")
+                                             && !itu.IsThirdParty
+                                             && blackListedClasses.All(blc => itu.SimpleName != blc)
+                                             && blackListedNamespaces.All(bns => itu.ParentNamespace.FullName != bns))
+
+where illegalTypesUsed.Any()
+
+select new { Assembly = t.ParentAssembly, Type= t,t.ParentNamespace.FullName, illegalTypesUsed  }
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>Data -> CC</Name>
+warnif count > 0 
+
+let blackListedClasses = new string[]{"ServiceCollectionInitializer"}
+let blackListedNamespaces = new string[]{""}
+
+let uiTypes = JustMyCode.Types.Where(t => t.ParentNamespace.NameLike(".Data."))
+
+from t in uiTypes
+
+let illegalTypesUsed = t.TypesUsed.Where(itu => !itu.ParentNamespace.NameLike(".Data.|.CrossCutting.")
+                                             && !itu.IsThirdParty
+                                             && blackListedClasses.All(blc => itu.SimpleName != blc)
+                                             && blackListedNamespaces.All(bns => itu.ParentNamespace.FullName != bns))
+
+where illegalTypesUsed.Any()
+
+select new { Assembly = t.ParentAssembly, Type= t,t.ParentNamespace.FullName, illegalTypesUsed  }
+]]></Query>
+    <Query Active="True" DisplayList="True" DisplayStat="False" DisplaySelectionView="False" IsCriticalRule="False"><![CDATA[// <Name>CC -> CC</Name>
+warnif count > 0 
+
+let blackListedClasses = new string[]{"ServiceCollectionInitializer"}
+let blackListedNamespaces = new string[]{""}
+
+let uiTypes = JustMyCode.Types.Where(t => t.ParentNamespace.NameLike(".CC."))
+
+from t in uiTypes
+
+let illegalTypesUsed = t.TypesUsed.Where(itu => !itu.ParentNamespace.NameLike(".CC.")
+                                             && !itu.IsThirdParty
+                                             && blackListedClasses.All(blc => itu.SimpleName != blc)
+                                             && blackListedNamespaces.All(bns => itu.ParentNamespace.FullName != bns))
+
+where illegalTypesUsed.Any()
+
+select new { Assembly = t.ParentAssembly, Type= t, illegalTypesUsed  }
+]]></Query>
+  </Group>
+</Queries>

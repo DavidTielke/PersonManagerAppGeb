@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <RootNamespace>DavidTielke.PMA.Logic.Domain.PersonManagement</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Configuration.Contract\Configuration.Contract.csproj" />
+    <ProjectReference Include="..\DataClasses\DataClasses.csproj" />
+    <ProjectReference Include="..\DataStorage.Contract\DataStorage.Contract.csproj" />
+    <ProjectReference Include="..\PersonManagement.Contract\PersonManagement.Contract.csproj" />
+  </ItemGroup>
+
+</Project>
